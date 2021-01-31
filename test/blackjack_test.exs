@@ -5,4 +5,5 @@ defmodule BlackjackTest do
   test "start" do
     assert Blackjack.start() == true
   end
+
 end

@@ -14,36 +14,54 @@ defmodule Blackjack do
     play_new_hand(dealer, player)
 
     true
-
   end
 
   def play_new_hand(dealer, player) do
-    deck = ["A", "K", "Q", "J", 10, 9, 8, 7, 6, 5, 4, 3, 2]
-
     #deal the dealer cards
-    dealer = %{dealer | cards: get_starting_cards(deck) }
+    dealer = %{dealer | cards: get_starting_cards() }
 
     #deal the player cards
-    player = %{player | cards: get_starting_cards(deck) }
+    player = %{player | cards: get_starting_cards() }
 
     #prompt the player and start the bidding loop
     show_cards_and_prompt_for_decision(dealer, player)
-
   end
 
   def show_cards_and_prompt_for_decision(dealer, player) do
     #Show what the dealer is showing
     IO.puts("Dealer cards: *" <> Enum.join(Enum.slice(dealer.cards, 1, Enum.count(dealer.cards) - 1)))
+
+    #Show what the player is showing and their total
     IO.puts("Player cards: " <> Enum.join(player.cards, " "))
-    IO.puts("Total: " <> to_string(get_hand_total(player.cards)))
+    player_total = get_hand_total(player.cards)
+    IO.puts("Total: " <> to_string(player_total))
+
+    #We have some checks to do here
+    #1) Did they hit black jack and the dealer didnt
+    if !has_blackjack(dealer.cards) && has_blackjack(player.cards) do
+      #We won!
+      #The round is over
+      true
+    end
+
+    #2) Did they bust?
+    if player_total > 21 do
+      #We lost
+      #The round is over
+      true
+    end
+
+    #Ask the player what they want to do
     decision = IO.gets("What would you like to do? (H)it (S)tay :\n")
                           |> String.downcase()
                           |> String.trim()
 
     case decision do
       "h" ->
-        #If they Hit. Add another card to their hand and the dealers hand
+        #If they Hit. Add another card to their hand and prompt again for decision
         IO.puts("Hit")
+        player = %{player | cards: player.cards ++ [get_card()]}
+        show_cards_and_prompt_for_decision(dealer, player)
       "s" ->
         #If they stay. Play for the dealer and figure the outcome
         IO.puts("Stay")
@@ -53,11 +71,33 @@ defmodule Blackjack do
     end
   end
 
+  def has_blackjack(cards) do
+    has_ace = Enum.member?(cards, "A")
+    has_10 = Enum.member?(cards, "K") ||
+            Enum.member?(cards, "Q") ||
+            Enum.member?(cards, "J") ||
+            Enum.member?(cards, 10)
+
+    has_ace && has_10
+  end
+
+
+
   def get_hand_total(cards) do
-    aces = [] #Split the aces out of the hand
+    number_of_aces = Enum.count(cards, &(&1 == "A")) #Count the number of aces
     standard_cards_value = Enum.reduce(cards, 0, &(get_standard_card_value(&1) + &2))
-    aces_value = Enum.reduce(aces, 0, &(get_ace_card_value(&1) + &2))
+    aces_value = get_aces_value(standard_cards_value, number_of_aces)
     standard_cards_value + aces_value
+  end
+
+  def get_aces_value(standard_cards_value, number_of_aces) do
+    if number_of_aces > 0 do
+      first_ace_value = if standard_cards_value + 11 > 21, do: 1, else: 11
+      additional_aces_value = if number_of_aces > 1, do: number_of_aces - 1, else: 0
+      first_ace_value + additional_aces_value
+    else
+      0
+    end
   end
 
   def get_standard_card_value(card) do
@@ -77,20 +117,16 @@ defmodule Blackjack do
     end
   end
 
-  @spec get_ace_card_value(any) :: 1
-  def get_ace_card_value(hand_total) do
-    1
-  end
-
   def create_player(type, starting_money) do
      %{type: type, money: starting_money, cards: []}
   end
 
-  def get_starting_cards(deck) do
-    [get_card(deck), get_card(deck)]
+  def get_starting_cards() do
+    [get_card(), get_card()]
   end
 
-  def get_card(deck) do
+  def get_card() do
+    deck = ["A", "K", "Q", "J", 10, 9, 8, 7, 6, 5, 4, 3, 2]
     random = :rand.uniform(Enum.count(deck)) - 1
     Enum.at(deck, random)
   end
